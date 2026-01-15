@@ -1,0 +1,77 @@
+name: iOS Build (Debug Mode)
+
+on:
+  workflow_dispatch:  # 仅手动触发，用于调试
+
+jobs:
+  build-ios-debug:
+    name: Build iOS App (Debug)
+    runs-on: macos-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🎯 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+          cache: true
+      
+      - name: 📦 Get dependencies
+        run: flutter pub get
+      
+      - name: 🔍 Verify Flutter setup
+        run: flutter doctor -v
+      
+      - name: 📋 List project structure
+        run: |
+          echo "## Project Structure" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          find . -type f -name "*.dart" -o -name "*.yaml" -o -name "Podfile" -o -name "Info.plist" | head -20 >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ls -la ios/ >> $GITHUB_STEP_SUMMARY || echo "ios directory structure:" >> $GITHUB_STEP_SUMMARY
+      
+      - name: 🧹 Clean build
+        run: flutter clean
+      
+      - name: 📱 Install CocoaPods
+        run: |
+          sudo gem install cocoapods
+          pod --version
+      
+      - name: 📱 Check iOS configuration
+        run: |
+          echo "## iOS Configuration Check" >> $GITHUB_STEP_SUMMARY
+          if [ -f "ios/Podfile" ]; then
+            echo "✅ Podfile exists" >> $GITHUB_STEP_SUMMARY
+            cat ios/Podfile >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Podfile not found" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -f "ios/Runner/Info.plist" ]; then
+            echo "✅ Info.plist exists" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Info.plist not found" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: 🏗️ Build iOS (Debug with verbose)
+        run: |
+          flutter build ios --debug --no-codesign --verbose 2>&1 | tee build-debug.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "❌ Build failed. Full log:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            tail -200 build-debug.log >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+      
+      - name: 📤 Upload build log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-debug-log
+          path: build-debug.log
+          retention-days: 7

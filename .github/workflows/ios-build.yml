@@ -34,50 +34,122 @@ jobs:
       
       - name: 📦 Get dependencies
         run: flutter pub get
-        working-directory: .
       
       - name: 🔍 Verify Flutter setup
         run: flutter doctor -v
       
+      - name: 🔧 Ensure iOS project files
+        run: |
+          # Flutter 会自动生成 iOS 项目文件，但我们需要确保基本结构存在
+          if [ ! -d "ios/Flutter" ]; then
+            echo "⚠️ Flutter iOS files not found, they will be generated during build"
+          fi
+          # 确保 Flutter 生成必要的配置文件
+          flutter precache --ios || echo "⚠️ precache failed, continuing..."
+      
+      - name: 🔧 Check project structure
+        run: |
+          echo "## Project Structure Check" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ls -la ios/ >> $GITHUB_STEP_SUMMARY || echo "ios directory:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          if [ -f "ios/Podfile" ]; then
+            echo "✅ Podfile exists" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Podfile not found" >> $GITHUB_STEP_SUMMARY
+          fi
+      
       - name: 🧹 Clean build
         run: flutter clean
+      
+      - name: 📱 Install CocoaPods
+        run: |
+          sudo gem install cocoapods
+          pod --version
       
       - name: 📱 Install CocoaPods dependencies
         run: |
           cd ios
-          pod install
+          if [ -f "Podfile" ]; then
+            pod install --repo-update || echo "⚠️ pod install failed, continuing..."
+          else
+            echo "⚠️ Podfile not found, Flutter will handle dependencies"
+          fi
           cd ..
       
-      - name: 🏗️ Build iOS (Debug)
-        run: flutter build ios --debug --no-codesign
-        continue-on-error: true
-      
       - name: 🏗️ Build iOS (Release)
-        run: flutter build ios --release --no-codesign
-        continue-on-error: true
-      
-      - name: 📦 Archive iOS build
         run: |
-          cd ios
-          xcodebuild archive \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -archivePath build/Runner.xcarchive \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
-        continue-on-error: true
+          echo "Starting iOS build..."
+          set +e  # 允许错误，以便捕获退出代码
+          flutter build ios --release --no-codesign 2>&1 | tee build.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          
+          if [ ${BUILD_EXIT_CODE} -ne 0 ]; then
+            echo "## ❌ Build Failed (Exit Code: ${BUILD_EXIT_CODE})" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Error Details" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            tail -300 build.log >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Project Structure" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            find ios -type f -name "*.xcodeproj" -o -name "*.xcworkspace" -o -name "Podfile" 2>/dev/null | head -10 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Build failed with exit code ${BUILD_EXIT_CODE}"
+            echo "Last 100 lines of log:"
+            tail -100 build.log
+            exit ${BUILD_EXIT_CODE}
+          fi
+          
+          echo "✅ Build completed successfully"
+          echo "Checking build output..."
+          if [ -d "build/ios/iphoneos" ]; then
+            ls -la build/ios/iphoneos/
+            echo "✅ Build output found"
+          else
+            echo "⚠️ Build output directory not found"
+            echo "Checking alternative locations..."
+            find build -name "*.app" -o -name "*.ipa" 2>/dev/null | head -10
+          fi
+        env:
+          FLUTTER_BUILD_MODE: release
+      
+      - name: 📋 List build output
+        if: always()
+        run: |
+          echo "## Build Output Check" >> $GITHUB_STEP_SUMMARY
+          if [ -d "build/ios/iphoneos" ]; then
+            echo "✅ Build output directory exists" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            ls -la build/ios/iphoneos/ >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Build output directory not found" >> $GITHUB_STEP_SUMMARY
+          fi
       
       - name: 📤 Upload build artifacts
         uses: actions/upload-artifact@v4
-        if: always()
+        if: success()
+        continue-on-error: true
         with:
           name: ios-build-artifacts
           path: |
-            ios/build/Runner.xcarchive
             build/ios/iphoneos/Runner.app
+            build/ios/iphoneos/*.dSYM
+            build.log
           retention-days: 7
+          if-no-files-found: warn
+      
+      - name: 📤 Upload build log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
+          if-no-files-found: ignore
       
       - name: 📊 Build summary
         if: always()
@@ -88,5 +160,10 @@ jobs:
           echo "- **Build Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Time**: $(date)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📥 Download Build Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "Build artifacts are available in the Actions tab for 7 days." >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "### ✅ Build Successful" >> $GITHUB_STEP_SUMMARY
+            echo "Build artifacts are available in the Actions tab for 7 days." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Build Failed" >> $GITHUB_STEP_SUMMARY
+            echo "Please check the build log for details." >> $GITHUB_STEP_SUMMARY
+          fi
