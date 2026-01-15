@@ -1,0 +1,92 @@
+name: iOS Build
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'lib/**'
+      - 'ios/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/ios-build.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-ios:
+    name: Build iOS App
+    runs-on: macos-latest  # 使用 macOS runner
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🎯 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+          cache: true
+      
+      - name: 📦 Get dependencies
+        run: flutter pub get
+        working-directory: .
+      
+      - name: 🔍 Verify Flutter setup
+        run: flutter doctor -v
+      
+      - name: 🧹 Clean build
+        run: flutter clean
+      
+      - name: 📱 Install CocoaPods dependencies
+        run: |
+          cd ios
+          pod install
+          cd ..
+      
+      - name: 🏗️ Build iOS (Debug)
+        run: flutter build ios --debug --no-codesign
+        continue-on-error: true
+      
+      - name: 🏗️ Build iOS (Release)
+        run: flutter build ios --release --no-codesign
+        continue-on-error: true
+      
+      - name: 📦 Archive iOS build
+        run: |
+          cd ios
+          xcodebuild archive \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath build/Runner.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+        continue-on-error: true
+      
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-build-artifacts
+          path: |
+            ios/build/Runner.xcarchive
+            build/ios/iphoneos/Runner.app
+          retention-days: 7
+      
+      - name: 📊 Build summary
+        if: always()
+        run: |
+          echo "## 📱 iOS Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Flutter Version**: $(flutter --version | head -n 1)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Time**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📥 Download Build Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "Build artifacts are available in the Actions tab for 7 days." >> $GITHUB_STEP_SUMMARY

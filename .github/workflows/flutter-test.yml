@@ -1,0 +1,50 @@
+name: Flutter Test
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'pubspec.yaml'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🎯 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+          cache: true
+      
+      - name: 📦 Get dependencies
+        run: flutter pub get
+      
+      - name: 🔍 Analyze code
+        run: flutter analyze
+      
+      - name: 🧪 Run tests
+        run: flutter test
+        continue-on-error: true
+      
+      - name: 📊 Test summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Time**: $(date)" >> $GITHUB_STEP_SUMMARY

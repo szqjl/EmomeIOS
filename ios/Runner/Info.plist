@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>骂了me</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>emofirst</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	
+	<!-- ============================================ -->
+	<!-- EmoFirst iOS 配置 - 符合工作流要求 -->
+	<!-- ============================================ -->
+	
+	<!-- 隐私说明 - 无必须权限 -->
+	<!-- 注意：EmoFirst 不需要任何必须权限 -->
+	<!-- 所有数据仅在本地内存中处理，不收集用户信息 -->
+	<!-- 符合工作流文档要求：无必须权限配置 -->
+	
+	<!-- 可选权限说明（仅在用户主动使用相关功能时请求） -->
+	<!-- 存储权限：仅当用户主动导出PDF时请求 -->
+	<!-- 通知权限：仅当用户设置提醒时请求 -->
+	
+	<!-- 系统功能（无需权限） -->
+	<!-- 触觉反馈：iOS系统内置，无需权限 -->
+	<!-- 音频播放：iOS系统内置，无需权限 -->
+	
+	<!-- Bundle ID配置说明 -->
+	<!-- 在Xcode中配置：com.emofirst -->
+	<!-- 路径：项目 -> Runner -> General -> Bundle Identifier -->
+</dict>
+</plist>
