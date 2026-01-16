@@ -103,10 +103,34 @@ jobs:
             exit 1
           fi
       
+      - name: 🔐 Disable code signing requirement
+        run: |
+          # 禁用 Xcode 项目的代码签名要求
+          if [ -f "ios/Runner.xcodeproj/project.pbxproj" ]; then
+            echo "Disabling code signing in Xcode project..."
+            # 使用 sed 修改项目文件，禁用代码签名
+            sed -i '' 's/CODE_SIGN_IDENTITY = ".*"/CODE_SIGN_IDENTITY = ""/g' ios/Runner.xcodeproj/project.pbxproj || \
+            sed -i 's/CODE_SIGN_IDENTITY = ".*"/CODE_SIGN_IDENTITY = ""/g' ios/Runner.xcodeproj/project.pbxproj || true
+            sed -i '' 's/CODE_SIGN_IDENTITY\[sdk=.*\] = ".*"/CODE_SIGN_IDENTITY[sdk=iphoneos*] = ""/g' ios/Runner.xcodeproj/project.pbxproj || \
+            sed -i 's/CODE_SIGN_IDENTITY\[sdk=.*\] = ".*"/CODE_SIGN_IDENTITY[sdk=iphoneos*] = ""/g' ios/Runner.xcodeproj/project.pbxproj || true
+            sed -i '' 's/DEVELOPMENT_TEAM = ".*"/DEVELOPMENT_TEAM = ""/g' ios/Runner.xcodeproj/project.pbxproj || \
+            sed -i 's/DEVELOPMENT_TEAM = ".*"/DEVELOPMENT_TEAM = ""/g' ios/Runner.xcodeproj/project.pbxproj || true
+            sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ".*"/PROVISIONING_PROFILE_SPECIFIER = ""/g' ios/Runner.xcodeproj/project.pbxproj || \
+            sed -i 's/PROVISIONING_PROFILE_SPECIFIER = ".*"/PROVISIONING_PROFILE_SPECIFIER = ""/g' ios/Runner.xcodeproj/project.pbxproj || true
+            echo "✅ Code signing disabled"
+          else
+            echo "⚠️ Xcode project file not found, skipping code signing configuration"
+          fi
+      
       - name: 🏗️ Build iOS (Release)
         run: |
           echo "Starting iOS build..."
+          echo "Build configuration: Release, no code signing"
           set +e  # 允许错误，以便捕获退出代码
+          # 使用环境变量强制禁用代码签名
+          export CODE_SIGN_IDENTITY=""
+          export CODE_SIGNING_REQUIRED=NO
+          export CODE_SIGNING_ALLOWED=NO
           flutter build ios --release --no-codesign 2>&1 | tee build.log
           BUILD_EXIT_CODE=${PIPESTATUS[0]}
           set -e
